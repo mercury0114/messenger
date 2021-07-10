@@ -12,9 +12,11 @@ int sock = 0, valread;
 
 void* WriteMessages(void* arguments) {
     while(true) {
-        char buffer[1024];
+        char buffer[1024] = {0};
         fgets(buffer, sizeof(buffer), stdin);
-        send(sock, buffer, strlen(buffer), 0);
+		if (strlen(buffer) > 1) {
+			send(sock, buffer, strlen(buffer), 0);
+		}
     }
 }
 

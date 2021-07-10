@@ -13,8 +13,10 @@
 #define MAX_LENGTH 1024
 #define NUM_THREADS 2
 
+#define HISTORY_FILE "history.txt"
+
 void SendHistory(int socket) {
-    FILE* history = fopen("history.txt", "r");
+    FILE* history = fopen(HISTORY_FILE, "r");
     char line[MAX_LENGTH] = {0};
     while(fgets(line, sizeof(line), history)) {
         send(socket, line, strlen(line), 0);
@@ -27,14 +29,13 @@ int assigned_sockets[NUM_THREADS] = {0};
 
 void* ReadFromClient(void* arguments) {
     int socket = *((int *) arguments);
-    char buffer[1024] = {0};
     printf("Client connected to socket %d\n", socket);
     SendHistory(socket);
+    char buffer[1024] = {0};
     while (read(socket, buffer, sizeof(buffer))) {
         Push(buffer, socket);
         memset(buffer, 0, sizeof(buffer));
     }
-
     for (int i = 0; i < NUM_THREADS; i++) {
         if (assigned_sockets[i] == socket) {
             assigned_sockets[i] = 0;
@@ -45,16 +46,20 @@ void* ReadFromClient(void* arguments) {
 
 void* WriteToClients(void* arguments) {
     while (true) {
-        if (!QueueEmpty()) {
+		FILE* history_file = fopen(HISTORY_FILE, "a");
+        while (!QueueEmpty()) {
+			printf("New message\n");
             char* message = FrontMessage();
             int socket = FrontSocket();
-            for (int i = 0; i < NUM_THREADS; i++) {
+            fprintf(history_file, "%s", message);
+			for (int i = 0; i < NUM_THREADS; i++) {
                 if (assigned_sockets[i] && assigned_sockets[i] != socket) {
                     send(assigned_sockets[i], message, strlen(message), 0);
-                }
+				}
             }
             Pop();
         }
+		fclose(history_file);
     }
 }
 
