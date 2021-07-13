@@ -26,15 +26,22 @@ void SendHistory(int socket) {
 }
 
 static pthread_mutex_t mutex;
-int assigned_sockets[NUM_THREADS] = {0};
+static int assigned_sockets[NUM_THREADS] = {0};
+static char names[NUM_THREADS][MAX_LENGTH];
 
 void* ReadFromClient(void* arguments) {
     int socket = *((int *) arguments);
+	char name[MAX_LENGTH] = {0};
     printf("Client connected to socket %d\n", socket);
+	read(socket, name, MAX_LENGTH);
+	if (strlen(name) < 2) {
+		printf("Client didn't provide a name, disconnecting him\n");
+		return NULL;
+	}
     SendHistory(socket);
     char buffer[MAX_LENGTH] = {0};
     while (read(socket, buffer, sizeof(buffer))) {
-        Push(buffer, socket);
+        Push(buffer, name, socket);
         memset(buffer, 0, sizeof(buffer));
     }
 	pthread_mutex_lock(&mutex);
@@ -52,11 +59,15 @@ void* WriteToClients(void* arguments) {
 		FILE* history_file = fopen(HISTORY_FILE, "a");
 		while (!QueueEmpty()) {
 			char* message = FrontMessage();
+			char* name = FrontName();
 			int socket = FrontSocket();
-			fprintf(history_file, "%s", message);
+			int index = 0;
+			char name_message[MAX_LENGTH] = {0};
+			sprintf(name_message, "%s: %s", name, message);
+			fprintf(history_file, "%s", name_message);
 			for (int i = 0; i < NUM_THREADS; i++) {
 				if (assigned_sockets[i] && assigned_sockets[i] != socket) {
-					send(assigned_sockets[i], message, strlen(message), 0);
+					send(assigned_sockets[i], name_message, strlen(name_message), 0);
 				}
 			}
 			Pop();

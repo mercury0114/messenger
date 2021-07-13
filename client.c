@@ -19,7 +19,7 @@ void* WriteMessages(void* arguments) {
 	}
 }
 
-int ConnectToServer() {
+int ConnectToServer(const char* name) {
 	struct sockaddr_in serv_addr;
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_port = htons(8080);
@@ -37,12 +37,18 @@ int ConnectToServer() {
 		printf("Connection Failed \n");
 		exit(EXIT_FAILURE);
 	}
+	send(s, name, strlen(name), 0);
 	return s;
 }
 
 int main(int argc, char const *argv[])
 {
-	int socket = ConnectToServer();
+	if (argc != 2) {
+		printf("Please give your name:\n");
+		printf("./client [Name]\n");
+		return 0;
+	}
+	int socket = ConnectToServer(argv[1]);
 	printf("%d\n", socket);
 	pthread_t writer;
 	pthread_create(&writer, NULL, WriteMessages, &socket);
